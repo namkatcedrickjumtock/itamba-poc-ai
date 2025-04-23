@@ -1,11 +1,9 @@
 "use server";
 
-import { CoreMessage, streamText, generateText } from "ai";
+import { CoreMessage, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { createStreamableValue, createStreamableUI } from "ai/rsc";
-import { Weather } from "@/components/weather";
+import { createStreamableValue, } from "ai/rsc";
 import { ReactNode } from "react";
-import { z } from "zod";
 
 export interface Message {
   role: "user" | "assistant";
@@ -28,47 +26,6 @@ export async function continueTextConversation(messages: CoreMessage[]) {
   return stream.value;
 }
 
-// Gen UIs
-export async function continueConversation(history: Message[]) {
-  const stream = createStreamableUI();
-
-  const { text, toolResults } = await generateText({
-    headers: {
-      Authorization: `Bearer ${process.env.OPEN_API_KEY}`,
-    },
-    model: openai("o1-mini"),
-    system: "You are a friendly weather assistant!",
-    messages: history,
-    temperature: 1, // Fixed: Only value supported by o1-mini
-    tools: {
-      showWeather: {
-        description: "Show the weather for a given location.",
-        parameters: z.object({
-          city: z.string().describe("The city to show the weather for."),
-          unit: z
-            .enum(["F"])
-            .describe("The unit to display the temperature in"),
-        }),
-        execute: async ({ city, unit }) => {
-          stream.done(<Weather city={city} unit={unit} />);
-          return `Here's the weather for ${city}!`;
-        },
-      },
-    },
-  });
-
-  return {
-    messages: [
-      ...history,
-      {
-        role: "assistant" as const,
-        content:
-          text || toolResults.map((toolResult) => toolResult.result).join(),
-        display: stream.value,
-      },
-    ],
-  };
-}
 
 // Utils
 export async function checkAIAvailability() {
