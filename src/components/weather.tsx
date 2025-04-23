@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { Cloud, Sun, Droplets, Wind, ChevronDown, ChevronUp } from 'lucide-react'
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/label"
+import { Switch } from "@/components/switch"
 
 interface WeatherProps {
   city: string;

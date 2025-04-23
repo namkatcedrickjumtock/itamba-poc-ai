@@ -1,52 +1,57 @@
-'use server';
+"use server";
 
-import { createStreamableValue } from 'ai/rsc';
-import { CoreMessage, streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { Weather } from '@/components/weather';
-import { generateText } from 'ai';
-import { createStreamableUI } from 'ai/rsc';
-import { ReactNode } from 'react';
-import { z } from 'zod';
+import { CoreMessage, streamText, generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { createStreamableValue, createStreamableUI } from "ai/rsc";
+import { Weather } from "@/components/weather";
+import { ReactNode } from "react";
+import { z } from "zod";
 
 export interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+  role: "user" | "assistant";
+  content: string | string [];
   display?: ReactNode;
 }
 
-
-// Streaming Chat 
+// Streaming Chat
 export async function continueTextConversation(messages: CoreMessage[]) {
   const result = await streamText({
-    model: openai('gpt-4-turbo'),
+    headers: {
+      Authorization: `Bearer ${process.env.OPEN_API_KEY}`,
+    },
+    model: openai("o1-mini"),
     messages,
+    temperature: 1, // Fixed: Only value supported by o1-mini
   });
 
   const stream = createStreamableValue(result.textStream);
   return stream.value;
 }
 
-// Gen UIs 
+// Gen UIs
 export async function continueConversation(history: Message[]) {
   const stream = createStreamableUI();
 
   const { text, toolResults } = await generateText({
-    model: openai('gpt-3.5-turbo'),
-    system: 'You are a friendly weather assistant!',
+    headers: {
+      Authorization: `Bearer ${process.env.OPEN_API_KEY}`,
+    },
+    model: openai("o1-mini"),
+    system: "You are a friendly weather assistant!",
     messages: history,
+    temperature: 1, // Fixed: Only value supported by o1-mini
     tools: {
       showWeather: {
-        description: 'Show the weather for a given location.',
+        description: "Show the weather for a given location.",
         parameters: z.object({
-          city: z.string().describe('The city to show the weather for.'),
+          city: z.string().describe("The city to show the weather for."),
           unit: z
-            .enum(['F'])
-            .describe('The unit to display the temperature in'),
+            .enum(["F"])
+            .describe("The unit to display the temperature in"),
         }),
         execute: async ({ city, unit }) => {
           stream.done(<Weather city={city} unit={unit} />);
-          return `Here's the weather for ${city}!`; 
+          return `Here's the weather for ${city}!`;
         },
       },
     },
@@ -56,9 +61,9 @@ export async function continueConversation(history: Message[]) {
     messages: [
       ...history,
       {
-        role: 'assistant' as const,
+        role: "assistant" as const,
         content:
-          text || toolResults.map(toolResult => toolResult.result).join(),
+          text || toolResults.map((toolResult) => toolResult.result).join(),
         display: stream.value,
       },
     ],
@@ -67,6 +72,5 @@ export async function continueConversation(history: Message[]) {
 
 // Utils
 export async function checkAIAvailability() {
-  const envVarExists = !!process.env.OPENAI_API_KEY;
-  return envVarExists;
+  return !!process.env.OPEN_API_KEY;
 }
